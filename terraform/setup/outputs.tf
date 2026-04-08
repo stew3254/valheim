@@ -3,5 +3,9 @@ output "firewall" {
 }
 
 output "ssh_keys" {
-  value = hcloud_ssh_key.valheim
+  value = data.hcloud_ssh_keys.all.ssh_keys
+}
+
+output "new_ssh_keys" {
+  value = local.new_ssh_keys
 }
