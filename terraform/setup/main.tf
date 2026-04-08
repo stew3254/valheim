@@ -52,8 +52,10 @@ resource "hcloud_firewall" "valheim" {
   }
 }
 
-# Grab all existing ssh keys to see if we need to filter any out
-data "hcloud_ssh_keys" "all" {}
+# Grab all existing ssh keys not created by terraform to see if we need to filter any out
+data "hcloud_ssh_keys" "all" {
+  with_selector = "app!=valheim"
+}
 
 locals {
   # Set of public keys already registered in hcloud
@@ -61,12 +63,21 @@ locals {
     for key in data.hcloud_ssh_keys.all.ssh_keys : trimspace(key.public_key)
   ])
 
-  # Only keep var.ssh_keys entries whose public key isn't already registered
+  # Only keep var.ssh_keys entries whose public key isn't already registered to add the new ones
   new_ssh_keys = {
     for name, pubkey in var.ssh_keys :
     name => pubkey
     if !contains(local.existing_public_keys, trimspace(pubkey))
   }
+
+  # Find the duplicate keys, so that we can reference their name later
+  duplicate_keys = {
+    for name, pubkey in var.ssh_keys :
+    name => pubkey
+    if contains(local.existing_public_keys, trimspace(pubkey))
+  }
+
+  key_names = concat(keys(local.duplicate_keys), keys(local.new_ssh_keys))
 }
 
 resource "hcloud_ssh_key" "valheim" {
